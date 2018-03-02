@@ -28,6 +28,12 @@ static struct list ready_list;
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
 
+/* List of all sleeping processes. */
+
+static struct list sleep_list;
+
+
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -173,7 +179,7 @@ thread_create (const char *name, int priority,
   tid_t tid;
 
   ASSERT (function != NULL);
-
+   
   /* Allocate thread. */
   t = palloc_get_page (PAL_ZERO);
   if (t == NULL)
@@ -183,6 +189,7 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
+  t->sleep_ticks = -1;
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;
@@ -344,6 +351,39 @@ thread_get_priority (void)
 {
   return thread_current ()->priority;
 }
+
+
+/* The thread_sleep function */
+
+void thread_sleep(struct thread* current,int duration)
+{
+	
+	ASSERT(!intr_context())
+	current->sleep_ticks = duration;
+	list_pushback(sleep_list,&current->elem);
+	thread_block();
+	
+	
+
+}
+
+
+/*  Reference for list functions in the kernel space
+
+
+ Returns LIST's tail.
+
+   list_end() is often used in iterating through a list from
+   front to back.  See the big comment at the top of list.h for
+   an example. */
+void thread_check(void)
+{
+     struct list_elem* elem =  list_begin(&sleep_list);
+         
+
+}
+
+
 
 /* Sets the current thread's nice value to NICE. */
 void

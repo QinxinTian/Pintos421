@@ -20,6 +20,12 @@
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
 
+
+/* Lock to be used inside the timer_sleep function */
+struct lock* sleep_lock;
+lock_init(sleep_lock);
+
+
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
@@ -88,12 +94,14 @@ timer_elapsed (int64_t then)
    be turned on. */
 void
 timer_sleep (int64_t ticks) 
-{
-  int64_t start = timer_ticks ();
+{	
 
-  ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+	ASSERT(intr_get_level == INTR_ON);
+	enum intr_level previous_state = intr_disable();
+	struct thread* current = thread_current();
+	thread_sleep(ticks);
+	intr_set_level(previous_state);
+
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -170,6 +178,7 @@ timer_print_stats (void)
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
+  	
   ticks++;
   thread_tick ();
 }
