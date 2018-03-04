@@ -355,15 +355,21 @@ thread_get_priority (void)
 
 /* The thread_sleep function */
 
-void thread_sleep(struct thread* current,int duration)
+static bool cmp_func(const struct list_elem* a,const struct list_elem* b)
+{
+       const struct thread* at = list_entry(a,struct thread , elem);
+       const struct thread* bt = list_entry(b,struct thread, elem);
+	return at->sleep_ticks < bt->sleep_ticks;
+}
+
+void thread_sleep(int duration)
 {
 	
 	ASSERT(!intr_context())
+	struct thread* current = thread_current();
 	current->sleep_ticks = duration;
-	list_pushback(sleep_list,&current->elem);
+	list_insert_ordered(&sleep_list,&current->elem,(list_less_func*)cmp_func,NULL);
 	thread_block();
-	
-	
 
 }
 
@@ -378,9 +384,28 @@ void thread_sleep(struct thread* current,int duration)
    an example. */
 void thread_check(void)
 {
-     struct list_elem* elem =  list_begin(&sleep_list);
-         
+   enum intr_level previous_state;
+   struct list_elem *rm;
+    previous_state=intr_disable();
+   struct list_elem * start = list_begin(&sleep_list);
+  
+   while(start!= list_end(&sleep_list))
+    {
 
+     struct thread *t = list_entry (start, struct thread, elem);
+       if(t->sleep_ticks==0)
+	{
+		rm = list_remove(start);
+		thread_unblock(t);
+		start=rm; //because remove returns the next element in the list. 
+	}
+       else {
+	t->sleep_ticks--;
+	break;
+       }
+    }         
+ intr_set_level(previous_state);
+  
 }
 
 

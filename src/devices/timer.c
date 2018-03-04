@@ -21,11 +21,6 @@
 static int64_t ticks;
 
 
-/* Lock to be used inside the timer_sleep function */
-struct lock* sleep_lock;
-lock_init(sleep_lock);
-
-
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
@@ -96,11 +91,10 @@ void
 timer_sleep (int64_t ticks) 
 {	
 
-	ASSERT(intr_get_level == INTR_ON);
-	enum intr_level previous_state = intr_disable();
-	struct thread* current = thread_current();
+	ASSERT(intr_get_level() == INTR_ON); //making sure interrupts are on.
+	enum intr_level previous_state = intr_disable(); //save the state before the interrupts are disabled.
 	thread_sleep(ticks);
-	intr_set_level(previous_state);
+	intr_set_level(previous_state); //Sets the previous state and resumes operation.
 
 }
 
@@ -180,6 +174,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   	
   ticks++;
+  thread_check();
   thread_tick ();
 }
 
