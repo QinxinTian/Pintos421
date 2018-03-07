@@ -10,6 +10,7 @@
 #include "threads/palloc.h"
 #include "threads/switch.h"
 #include "threads/synch.h"
+#include "devices/timer.h"
 #include "threads/vaddr.h"
 #ifdef USERPROG
 #include "userprog/process.h"
@@ -98,7 +99,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-
+  list_init (&sleep_list);
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -188,7 +189,8 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
-
+  
+  //Initilizes the sleep_ticks member of the thread struct.
   t->sleep_ticks = -1;
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -367,7 +369,7 @@ void thread_sleep(int duration)
 	
 	ASSERT(!intr_context())
 	struct thread* current = thread_current();
-	current->sleep_ticks = duration;
+	current->sleep_ticks = timer_ticks()+duration;
 	list_insert_ordered(&sleep_list,&current->elem,(list_less_func*)cmp_func,NULL);
 	thread_block();
 
@@ -388,21 +390,19 @@ void thread_check(void)
    struct list_elem *rm;
     previous_state=intr_disable();
    struct list_elem * start = list_begin(&sleep_list);
-  
+   int64_t ticks=timer_ticks(); 
    while(start!= list_end(&sleep_list))
     {
 
      struct thread *t = list_entry (start, struct thread, elem);
-       if(t->sleep_ticks==0)
+       if(ticks>t->sleep_ticks)
 	{
-		rm = list_remove(start);
+	        list_remove(start);
 		thread_unblock(t);
-		start=rm; //because remove returns the next element in the list. 
+	 //because remove returns the next element in the list. 
 	}
-       else {
-	t->sleep_ticks--;
-	break;
-       }
+       break;	
+	       
     }         
  intr_set_level(previous_state);
   
