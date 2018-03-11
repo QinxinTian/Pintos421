@@ -44,6 +44,9 @@ static struct thread *initial_thread;
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
+/* To track sleeping threads */
+//static struct lock sleep_lock;
+
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
   {
@@ -97,6 +100,7 @@ thread_init (void)
   ASSERT (intr_get_level () == INTR_OFF);
 
   lock_init (&tid_lock);
+ // lock_init (&sleep_lock);
   list_init (&ready_list);
   list_init (&all_list);
   list_init (&sleep_list);
@@ -366,13 +370,13 @@ static bool cmp_func(const struct list_elem* a,const struct list_elem* b)
 
 void thread_sleep(int duration)
 {
-	
+//	lock_acquire(&sleep_lock);
 	ASSERT(!intr_context())
 	struct thread* current = thread_current();
-	current->sleep_ticks = timer_ticks()+duration;
+	current->sleep_ticks =timer_ticks()+ duration;
 	list_insert_ordered(&sleep_list,&current->elem,(list_less_func*)cmp_func,NULL);
 	thread_block();
-
+//	lock_release(&sleep_lock);
 }
 
 
@@ -395,13 +399,18 @@ void thread_check(void)
     {
 
      struct thread *t = list_entry (start, struct thread, elem);
-       if(ticks>t->sleep_ticks)
+       if(ticks>=t->sleep_ticks)
 	{
-	        list_remove(start);
+	       rm= list_remove(start);
 		thread_unblock(t);
+		start = rm;
 	 //because remove returns the next element in the list. 
 	}
-       break;	
+	else
+	{
+	break;
+	}
+             	
 	       
     }         
  intr_set_level(previous_state);

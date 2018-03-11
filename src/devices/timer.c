@@ -21,6 +21,8 @@
 static int64_t ticks;
 
 
+//static struct lock sleep_lock;
+
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
@@ -36,6 +38,7 @@ static void real_time_delay (int64_t num, int32_t denom);
 void
 timer_init (void) 
 {
+ // lock_init(&sleep_lock);
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
 }
@@ -90,12 +93,12 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {	
-
+//        lock_acquire(&sleep_lock);
 	ASSERT(intr_get_level() == INTR_ON); //making sure interrupts are on.
 	enum intr_level previous_state = intr_disable(); //save the state before the interrupts are disabled.
 	thread_sleep(ticks);
 	intr_set_level(previous_state); //Sets the previous state and resumes operation.
-
+//	lock_release(&sleep_lock);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
