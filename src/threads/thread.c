@@ -233,6 +233,18 @@ thread_block (void)
   schedule ();
 }
 
+/* Comparator for the unblock function */
+
+/*
+static bool cmp_priority(const struct list_elem* a,const struct list_elem* b)
+{
+	const struct thread a_th = list_entry(a,struct thread,elem);
+	const struct thread b_th = list_entry(b,struct thread,elem);
+	return a_th->priority>b_th->priority;
+
+}
+*/
+
 /* Transitions a blocked thread T to the ready-to-run state.
    This is an error if T is not blocked.  (Use thread_yield() to
    make the running thread ready.)
@@ -241,6 +253,17 @@ thread_block (void)
    be important: if the caller had disabled interrupts itself,
    it may expect that it can atomically unblock a thread and
    update other data. */
+
+
+static bool cmp_pri(const struct list_elem* a,const struct list_elem* b)
+{
+       const struct thread* at = list_entry(a,struct thread , elem);
+       const struct thread* bt = list_entry(b,struct thread, elem);
+	return at->priority > bt->priority;
+}
+
+
+
 void
 thread_unblock (struct thread *t) 
 {
@@ -249,11 +272,25 @@ thread_unblock (struct thread *t)
   ASSERT (is_thread (t));
 
   old_level = intr_disable ();
-  ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
-  t->status = THREAD_READY;
+  ASSERT (t->status == THREAD_BLOCKED); 
+  list_insert_ordered (&ready_list, &t->elem,(list_less_func*)cmp_pri,NULL);
+  struct list_elem* head = list_head(&ready_list);
+  struct thread* head_th = list_entry(head,struct thread, elem);
+    if(head_th-> priority > t->priority)
+	{
+         
+	  head_th->status = THREAD_READY;
+
+	}
+
+//   list_push_back(&ready_list,&t->elem);
+    else{
+  	t->status = THREAD_READY;
+	}
   intr_set_level (old_level);
 }
+
+
 
 /* Returns the name of the running thread. */
 const char *
@@ -321,7 +358,8 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+  //  list_push_back (&ready_list, &cur->elem);
+  list_insert_ordered (&ready_list, &cur->elem,(list_less_func*)cmp_pri,NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
