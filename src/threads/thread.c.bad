@@ -59,7 +59,6 @@ struct kernel_thread_frame
 static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
-bool check_higher_priority();
 
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
@@ -151,6 +150,39 @@ thread_tick (void)
     intr_yield_on_return ();
 }
 
+bool check_higher_priority()
+{
+ struct thread* cur = thread_current();
+  int old_level = intr_disable ();
+  struct list_elem *e = list_begin (&ready_list);
+  bool higher = false;
+  if(e != list_end (&ready_list))
+  {
+      struct thread *t = list_entry (e, struct thread, elem);
+      if(t->priority > cur->priority)
+      {
+         higher = true;
+       }
+  }
+
+  intr_set_level (old_level);
+  return higher;
+}
+
+void priority_add_ready_list(struct thread *newt)
+{
+    struct list_elem *e;
+
+    for (e = list_begin (&ready_list); e != list_end (&ready_list);
+           e = list_next (e))
+        {
+          struct thread *tr = list_entry (e, struct thread, elem);
+          if(newt->priority > tr->priority)
+		break;
+        }
+	list_insert(e,&newt->elem);
+}
+
 /* Prints thread statistics. */
 void
 thread_print_stats (void) 
@@ -186,6 +218,7 @@ thread_create (const char *name, int priority,
 
   ASSERT (function != NULL);
    
+printf("Create thread %s pri %d\n",name, priority);
   /* Allocate thread. */
   t = palloc_get_page (PAL_ZERO);
   if (t == NULL)
@@ -214,56 +247,10 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-  check_higher_priority();
 
   return tid;
 }
 
-void priority_add_ready_list(struct thread *newt)
-{
-  ASSERT (intr_get_level () == INTR_OFF);
-    struct list_elem *e;
-
-    for (e = list_begin (&ready_list); e != list_end (&ready_list);
-           e = list_next (e))
-        {
-          struct thread *tr = list_entry (e, struct thread, elem);
-          if(newt->priority > tr->priority)
-		break;
-        }
-	list_insert(e,&newt->elem);
-}
-
-bool check_higher_priority()
-{
- struct thread* cur = thread_current();
-  int old_level = intr_disable ();
-  struct list_elem *e = list_begin (&ready_list);
-  bool higher = false;
-  if(e != list_end (&ready_list))
-  {
-      struct thread *t = list_entry (e, struct thread, elem);
-      if(t->priority > cur->priority)
-      {
-         higher = true;
-       }
-  }
-
-  if(higher)
-  {
-    if(intr_context())
-    {
-    intr_yield_on_return();
-    }
-    else
-    {
-       thread_yield();
-    }
-  } 
-
-  intr_set_level (old_level);
-  return higher;
-}
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
 
@@ -297,9 +284,14 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  //list_push_back (&ready_list, &t->elem);
-  priority_add_ready_list(t);
+  list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
+  //priority_add_ready_list(t);
+  //if(check_higher_priority())
+  //{
+  //  thread_current()->status = THREAD_READY;
+  //  schedule();
+  //}
   intr_set_level (old_level);
 }
 
@@ -369,8 +361,8 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    //list_push_back (&ready_list, &cur->elem);
-    priority_add_ready_list(cur);
+    list_push_back (&ready_list, &cur->elem);
+    //priority_add_ready_list (cur);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -397,8 +389,11 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+printf("set priority %s pri %d\n",thread_current ()->name, new_priority);
   thread_current ()->priority = new_priority;
-  check_higher_priority();
+  ASSERT (!intr_context ());
+  //if(check_higher_priority())
+    //thread_yield();
 }
 
 /* Returns the current thread's priority. */
@@ -687,6 +682,7 @@ schedule (void)
   if (cur != next)
     prev = switch_threads (cur, next);
   thread_schedule_tail (prev);
+printf("switched from %s to %s\n", cur->name, next->name);
 }
 
 /* Returns a tid to use for a new thread. */
