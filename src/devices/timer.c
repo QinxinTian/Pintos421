@@ -96,7 +96,7 @@ timer_sleep (int64_t ticks)
 //        lock_acquire(&sleep_lock);
 	ASSERT(intr_get_level() == INTR_ON); //making sure interrupts are on.
 	enum intr_level previous_state = intr_disable(); //save the state before the interrupts are disabled.
-	thread_sleep(ticks);
+	thread_sleep(ticks);  //Call the thread_sleep function and pass duration
 	intr_set_level(previous_state); //Sets the previous state and resumes operation.
 //	lock_release(&sleep_lock);
 }
