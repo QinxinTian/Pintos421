@@ -213,6 +213,8 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
+  check_priority();   
+
 
   return tid;
 }
@@ -290,6 +292,23 @@ thread_unblock (struct thread *t)
   intr_set_level (old_level);
 }
 
+
+void check_priority(void)
+{
+  
+
+  struct list_elem* head = list_begin(&all_list);
+  //while(start != list_end(&all_list)
+  //{
+  struct thread* head_th = list_entry(head,struct thread, elem);
+  //thread_foreach(&cmp_sys_pri,NULL);
+    if(head_th -> priority > thread_current() ->priority)
+	{
+		thread_yield();
+	}
+
+
+}
 
 
 /* Returns the name of the running thread. */
@@ -382,11 +401,41 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
+
+void cmp_sys_pri(struct thread* th,void* aux)
+{
+	if(th->priority > thread_current()-> priority)
+	{
+		thread_yield();
+	}
+
+}
+
+
+
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) 
 {
+  
+  ASSERT(intr_get_level()==INTR_ON);
+  enum intr_level old_level= intr_disable();
   thread_current ()->priority = new_priority;
+  struct list_elem* head = list_begin(&all_list);
+  //while(start != list_end(&all_list)
+  //{
+  struct thread* head_th = list_entry(head,struct thread, elem);
+  //thread_foreach(&cmp_sys_pri,NULL);
+    if(head_th -> priority > thread_current() ->priority)
+	{
+		thread_yield();
+	}
+  
+
+
+  //}
+  intr_set_level(old_level);
+
 }
 
 /* Returns the current thread's priority. */
@@ -440,22 +489,19 @@ void thread_check(void)
        if(ticks>=t->sleep_ticks)
 	{
 	       rm= list_remove(start);
-		thread_unblock(t);
-		start = rm;
+	       thread_unblock(t);
+	       start = rm;
 	 //because remove returns the next element in the list. 
 	}
 	else
 	{
 	break;
 	}
-             	
-	       
+             	       
     }         
  intr_set_level(previous_state);
   
 }
-
-
 
 /* Sets the current thread's nice value to NICE. */
 void
@@ -577,7 +623,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
-  list_push_back (&all_list, &t->allelem);
+  list_insert_ordered (&all_list, &t->allelem,(list_less_func*)cmp_pri,NULL);
   intr_set_level (old_level);
 }
 
