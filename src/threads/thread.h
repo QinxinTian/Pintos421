@@ -131,6 +131,7 @@ void thread_yield (void);
 void thread_sleep(int);
 void thread_check(void);
 
+static bool cmp_pri(const struct list_elem* ,const struct list_elem* );
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);
