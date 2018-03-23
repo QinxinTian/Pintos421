@@ -20,6 +20,7 @@
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
 
+#define f (1<<14)	
 
 //static struct lock sleep_lock;
 
@@ -175,10 +176,28 @@ timer_print_stats (void)
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
-  	
   ticks++;
-  thread_check();
   thread_tick ();
+   if(thread_mlfqs)
+   { 
+     enum intr_level old_level = intr_disable();
+     thread_current()->recent_cpu= thread_current()->recent_cpu + (1*f);
+     intr_set_level(old_level);
+
+      if(ticks %4 ==0)
+       {
+         recalculate_priority_allthreads();   
+       }
+      if(ticks % TIMER_FREQ ==0)
+      {
+        recalculate_recent_cpuall(); 
+        recalculate_load_avg();
+      }
+
+    }  
+  
+  thread_check();
+
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
