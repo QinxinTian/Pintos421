@@ -621,7 +621,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
-
+  t->priority_original = priority;
+  t->parent = 0;
+  t->child  = 0;
   old_level = intr_disable ();
   list_insert_ordered (&all_list, &t->allelem,(list_less_func*)cmp_pri,NULL);
   intr_set_level (old_level);
