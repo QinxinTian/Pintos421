@@ -5,12 +5,12 @@
 #include <stdio.h>
 #include <string.h>
 #include "threads/flags.h"
-#include "threads/interrupt.h"
 #include "threads/intr-stubs.h"
 #include "threads/palloc.h"
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "devices/timer.h"
+#include "threads/interrupt.h"
 #include "threads/vaddr.h"
 #ifdef USERPROG
 #include "userprog/process.h"
@@ -535,8 +535,9 @@ void thread_check(void)
 
 
 void
-thread_set_nice (int nice UNUSED)
+thread_set_nice (int nice)
 {
+//printf("thread %s set nice %d\n",thread_current()->name,nice);
      enum intr_level old_level = intr_disable(); //to make sure that the nice value is not changed during call to the function
      thread_current() -> nice = nice;
      priority_single_thread(thread_current());
@@ -597,6 +598,7 @@ void recalculate_load_avg(void)
     operand1 = ((int64_t)operand1)*load_avg/f; //load_avg multipled;
     int operand2 = (no_ready_threads*f)/60;
     load_avg = operand1+operand2;
+//printf("load_avg %d op1 %d op2 %d ready %d\n",load_avg, operand1, operand2, no_ready_threads);
     intr_set_level(old_level);
 }
 
@@ -612,6 +614,7 @@ void recalculate_recent_cpu(struct thread* t)
   int operand2 = (((int64_t)operand1)*f)/ (operand1 + f);
   int operand3 = (((int64_t)operand2)* t->recent_cpu)/f;
   t -> recent_cpu = operand3 + (t->nice *f);
+//printf("thread %d recent %d, op1 %d, op2 %d op3 %d\n",(int) t,t->recent_cpu,operand1, operand2, operand3);
 
 }
 
@@ -621,9 +624,11 @@ void recalculate_recent_cpuall(void)
   while(start != list_end(&all_list))
    {     
      struct thread *t = list_entry (start, struct thread, elem);
-     recalculate_recent_cpu(&t);
-
+     recalculate_recent_cpu(t);
+     start = list_next(start);
    }
+   if(thread_current() != idle_thread)
+   	recalculate_recent_cpu(thread_current());
 
 }
 
@@ -634,10 +639,10 @@ void priority_single_thread(struct thread* t)
   int operand1 = t->recent_cpu / 4;
   int operand2 = t -> nice * 2;
   int operation1 = fp_MAX - operand1;
-  t-> priority = operation1 - (operand2*f);
-  (t -> priority > 0)? t->priority = PRI_MAX: t->priority;
-  (t -> priority < 63)?t->priority = PRI_MIN: t->priority;
-
+  t-> priority = (operation1 - (operand2*f)) / f;
+  //printf("thread %d nice %d pri %d recent_cpu %d\n",(int)t,t->nice,t->priority,t->recent_cpu);
+  (t -> priority > 63)? t->priority = PRI_MAX: t->priority;
+  (t -> priority < 0)?t->priority = PRI_MIN: t->priority;
 }
 
 void recalculate_priority_allthreads(void)
@@ -646,9 +651,11 @@ void recalculate_priority_allthreads(void)
   while(start != list_end(&all_list))
    {     
      struct thread *t = list_entry (start, struct thread, elem);
-     priority_single_thread(&t);
-
+     priority_single_thread(t);
+     start = list_next(start);
    }
+   if(thread_current() != idle_thread)
+        priority_single_thread(thread_current());
 
 }
 
