@@ -162,8 +162,8 @@ thread_tick (void)
 void
 thread_print_stats (void) 
 {
-  //printf ("Thread: %lld idle ticks, %lld kernel ticks, %lld user ticks\n",
-          //idle_ticks, kernel_ticks, user_ticks);
+  printf ("Thread: %lld idle ticks, %lld kernel ticks, %lld user ticks\n",
+          idle_ticks, kernel_ticks, user_ticks);
 }
 
 /* Creates a new kernel thread named NAME with the given initial
@@ -244,6 +244,7 @@ thread_block (void)
 }
 
 /* Comparator for the unblock function */
+
 /*
 static bool cmp_priority(const struct list_elem* a,const struct list_elem* b)
 {
@@ -537,12 +538,11 @@ void
 thread_set_nice (int nice)
 {
 //printf("thread %s set nice %d\n",thread_current()->name,nice);
-     //enum intr_level old_level = intr_disable(); //to make sure that the nice value is not changed during call to the function
+     enum intr_level old_level = intr_disable(); //to make sure that the nice value is not changed during call to the function
      thread_current() -> nice = nice;
      priority_single_thread(thread_current());
-     thread_yield();
-     //thread_check_priority(thread_current());
-     //intr_set_level(old_level);    
+     thread_check_priority(thread_current());
+     intr_set_level(old_level);    
 }
 
 
@@ -584,25 +584,22 @@ thread_get_recent_cpu (void)
 
 
 void recalculate_load_avg(void)
-{
-ASSERT(thread_mlfqs);
-ASSERT(intr_context());
-   //enum intr_level old_level = intr_disable();  
+{ 
+   enum intr_level old_level = intr_disable();  
    // load_avg = (59/60)*load_avg + (1/60)* no_of_ready_threads
-   size_t no_ready_threads = list_size(&ready_list);
+   int no_ready_threads = list_size(&ready_list);
    if(thread_current() != idle_thread)  //similar to thread_yield.
     {
         no_ready_threads ++;             
     } 
     //division -> x/n, ((int64_t)x) * f/y
-//the type of operand;
     int operand1 = (59 * f);
     operand1 = operand1/60;  //59/60 in fp
     operand1 = ((int64_t)operand1)*load_avg/f; //load_avg multipled;
     int operand2 = (no_ready_threads*f)/60;
     load_avg = operand1+operand2;
 //printf("load_avg %d op1 %d op2 %d ready %d\n",load_avg, operand1, operand2, no_ready_threads);
-    //intr_set_level(old_level);
+    intr_set_level(old_level);
 }
 
 void recalculate_recent_cpu(struct thread* t)
@@ -612,11 +609,12 @@ void recalculate_recent_cpu(struct thread* t)
   {
         return;
   }
+ 
   int operand1 = load_avg * 2;
   int operand2 = (((int64_t)operand1)*f)/ (operand1 + f);
   int operand3 = (((int64_t)operand2)* t->recent_cpu)/f;
   t -> recent_cpu = operand3 + (t->nice *f);
-  //printf("thread %d recent %d, op1 %d, op2 %d op3 %d\n",(int) t,t->recent_cpu,operand1, operand2, operand3);
+//printf("thread %d recent %d, op1 %d, op2 %d op3 %d\n",(int) t,t->recent_cpu,operand1, operand2, operand3);
 
 }
 
@@ -752,8 +750,6 @@ init_thread (struct thread *t, const char *name, int priority)
   old_level = intr_disable ();
   list_insert_ordered (&all_list, &t->allelem,(list_less_func*)cmp_pri,NULL);
   intr_set_level (old_level);
-  t->nice = 0;
-  t->recent_cpu = 0;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
