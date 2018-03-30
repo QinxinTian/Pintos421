@@ -542,6 +542,10 @@ thread_set_nice (int nice)
      thread_current() -> nice = nice;
      priority_single_thread(thread_current());
      thread_check_priority(thread_current());
+  
+     //thread_check_priority(thread_current());
+     //intr_set_level(old_level);    
+
      intr_set_level(old_level);    
 }
 
@@ -562,9 +566,9 @@ thread_get_load_avg (void)
   enum intr_level old_level = intr_disable();
   int round_off =load_avg*100;
   int result =0 ;  //round_off 
-  if(round_off>0){result = result+((round_off +f)/2);}
-  if(round_off<0)  {result = (round_off-f)/2;};
-  if(round_off == 0){result=0;}
+  if(round_off>=0){result = (round_off +f/2)/f;}
+  if(round_off<0)  {result = (round_off-f/2)/f;}
+  //if(round_off == 0){result=0;}
   intr_set_level(old_level);
   return result;
 }
@@ -576,8 +580,8 @@ thread_get_recent_cpu (void)
   enum intr_level old_level = intr_disable();
   int round_off= thread_current()->recent_cpu*100;
   int result =0;
-  (round_off>=0)?result = result+((round_off +f)/2):result; 
-  (round_off<0) ? result = (round_off-f)/2:result;
+  if (round_off>=0){result = (round_off +f/2)/f;}
+  if(round_off<0){ result = (round_off-f/2)/f;}
   intr_set_level(old_level);
   return result;
 }
