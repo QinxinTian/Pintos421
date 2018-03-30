@@ -643,10 +643,10 @@ void priority_single_thread(struct thread* t)
   int operand1 = t->recent_cpu / 4;
   int operand2 = t -> nice * 2;
   int operation1 = fp_MAX - operand1;
-  t-> priority = operation1 - (operand2*f);
+  t-> priority = ((operation1 - (operand2*f))/2)/f;
   //printf("thread %d nice %d pri %d recent_cpu %d\n",(int)t,t->nice,t->priority,t->recent_cpu);
-  (t -> priority > 63)? t->priority = PRI_MAX: t->priority;
-  (t -> priority < 0)?t->priority = PRI_MIN: t->priority;
+  if(t -> priority > 63) t->priority = PRI_MAX;
+  if(t -> priority < 0)t->priority = PRI_MIN;
 }
 
 void recalculate_priority_allthreads(void)

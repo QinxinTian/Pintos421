@@ -270,8 +270,9 @@ static bool cmp_pri_sema(const struct list_elem *ae,const struct list_elem *be, 
 {
    struct semaphore_elem *a = list_entry(ae, struct semaphore_elem , elem);
    struct semaphore_elem *b = list_entry(be, struct semaphore_elem , elem);
-   if(list_empty(&a ->semaphore.waiters)){return false;}
-   if(list_empty(&b -> semaphore.waiters)){return true;}
+    
+    if(list_empty(&a->semaphore.waiters)) return false;
+    if(list_empty(&b->semaphore.waiters)) return true;  
 
    struct thread *at = list_entry(list_front(&a->semaphore.waiters),struct thread, elem);
   
@@ -322,6 +323,8 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
   
+
+  
   sema_init (&waiter.semaphore, 0);
   list_insert_ordered (&cond->waiters, &waiter.elem,(list_less_func*)&cmp_pri_sema,NULL);
   lock_release (lock);
@@ -343,6 +346,10 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
+    
+   
+
+
 
   if (!list_empty (&cond->waiters)) 
  {   
