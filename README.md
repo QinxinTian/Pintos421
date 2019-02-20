@@ -1,2 +1,2 @@
 # Pintos421
-Course project of CSE421
+The first course(one out of two) project of CSE421
